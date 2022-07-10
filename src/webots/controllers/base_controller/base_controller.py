@@ -12,7 +12,7 @@ import sys
 sys.path.append('../')
 
 import numpy as np
-from utils import constant
+from constant import K_ROLL_P, K_PITCH_P, K_VERTICAL_P, K_VERTICAL_THRUST, K_VERTICAL_OFFSET
 
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
@@ -134,19 +134,19 @@ while robot.step(timestep) != -1:
 
     # Process sensor data here.
     # Compute the roll, pitch, yaw and vertical inputs.
-    roll_input = constant.K_ROLL_P * CLAMP(roll, -1.0, 1.0) + roll_acceleration + roll_disturbance
-    pitch_input = constant.K_PITCH_P * CLAMP(pitch, -1.0, 1.0) + pitch_acceleration + pitch_disturbance
+    roll_input = K_ROLL_P * CLAMP(roll, -1.0, 1.0) + roll_acceleration + roll_disturbance
+    pitch_input = K_PITCH_P * CLAMP(pitch, -1.0, 1.0) + pitch_acceleration + pitch_disturbance
     yaw_input = yaw_disturbance
-    clamped_difference_altitude = CLAMP(target_altitude - altitude + constant.K_VERTICAL_OFFSET, -1.0, 1.0)
-    vertical_input = constant.K_VERTICAL_P * pow(clamped_difference_altitude, 3.0)
+    clamped_difference_altitude = CLAMP(target_altitude - altitude + K_VERTICAL_OFFSET, -1.0, 1.0)
+    vertical_input = K_VERTICAL_P * pow(clamped_difference_altitude, 3.0)
 
     # Enter here functions to send actuator commands, like:
     #  motor.setPosition(10.0)
     # Actuate the motors taking into consideration all the computed inputs.
-    front_left_motor_input = constant.K_VERTICAL_THRUST + vertical_input - roll_input + pitch_input - yaw_input
-    front_right_motor_input = constant.K_VERTICAL_THRUST + vertical_input + roll_input + pitch_input + yaw_input
-    rear_left_motor_input = constant.K_VERTICAL_THRUST + vertical_input - roll_input - pitch_input + yaw_input
-    rear_right_motor_input = constant.K_VERTICAL_THRUST + vertical_input + roll_input - pitch_input - yaw_input
+    front_left_motor_input = K_VERTICAL_THRUST + vertical_input - roll_input + pitch_input - yaw_input
+    front_right_motor_input = K_VERTICAL_THRUST + vertical_input + roll_input + pitch_input + yaw_input
+    rear_left_motor_input = K_VERTICAL_THRUST + vertical_input - roll_input - pitch_input + yaw_input
+    rear_right_motor_input = K_VERTICAL_THRUST + vertical_input + roll_input - pitch_input - yaw_input
     front_left_motor.setVelocity(front_left_motor_input)
     front_right_motor.setVelocity(-front_right_motor_input)
     rear_left_motor.setVelocity(-rear_left_motor_input)
