@@ -10,6 +10,7 @@
 """
 import sys
 sys.path.append('../')
+sys.path.append('../../../')
 sys.path.append('../../../kafka-config/')
 
 import numpy as np
@@ -17,6 +18,7 @@ import base64
 import json
 
 from kafka import KafkaConsumer, KafkaProducer
+from config import DESIRED_ALTITUED, COEFFICIENT
 from constant import K_ROLL_P, K_PITCH_P, K_VERTICAL_P, K_VERTICAL_THRUST, K_VERTICAL_OFFSET
 from consumer_config import webots_config as consumer_config
 from producer_config import webots_config as producer_config
@@ -85,6 +87,11 @@ target_altitude = 1.0;  # The target altitude. Can be changed by the user.
 started_simulation = False
 movement = 'nop'
 
+front_left_motor_input = 0.0
+front_right_motor_input = 0.0
+rear_left_motor_input = 0.0
+rear_right_motor_input = 0.0
+
 # Main loop:
 # - perform simulation steps until Webots is stopping the controller
 while robot.step(timestep) != -1:
@@ -106,6 +113,26 @@ while robot.step(timestep) != -1:
       break
 
     if started_simulation:
+      # Calculate reward
+      # Every timestep that the ant is alive, it gets a reward of 1
+      survive_reward = 1
+      # A reward of moving forward which is measured as drone x-coordinate velocity
+      forward_reward = pitch * 10
+      # A negative reward for penalising the drone if not in the particular altitude which is measured as difference between best altitude and current altitude.
+      altitude_cost = np.abs(DESIRED_ALTITUED - altitude)
+      # A negative reward for penalising the drone if it takes actions that are too large.
+      ctrl_cost = COEFFICIENT *((front_left_motor_input  +
+                                front_right_motor_input +
+                                rear_left_motor_input   +
+                                rear_right_motor_input +
+                                roll_acceleration
+                                )*0.01
+                               )
+      #TODO A negative reward for penalising the drone if the external contact force occurs.
+      contact_cost = 0
+
+      total_reward = survive_reward + forward_reward - (altitude_cost + ctrl_cost + contact_cost)
+
       # Send data to the model
       img = camera.getImage()
       state = json.dumps({
