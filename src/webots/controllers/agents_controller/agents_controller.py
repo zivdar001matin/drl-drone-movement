@@ -32,87 +32,106 @@ from controller import Keyboard
 SIGN = lambda x : ((x) > 0) - ((x) < 0)
 CLAMP = lambda value, low, high :  ((low) if (value) < (low) else ((high) if (value) > (high) else (value)))
 
-# create the Robot instance.
-robot = Robot()
+class Environment():
+  def __init__(self):
+    # create the Robot instance.
+    self.robot = Robot()
 
-# kafka API
-producer = KafkaProducer(**producer_config)
-consumer = KafkaConsumer('webots-mailbox', **consumer_config)
+    # kafka API
+    self.producer = KafkaProducer(**producer_config)
+    self.consumer = KafkaConsumer('webots-mailbox', **consumer_config)
 
-# get the time step of the current world.
-timestep = int(robot.getBasicTimeStep())
+    # get the time step of the current world.
+    self.timestep = int(self.robot.getBasicTimeStep())
 
-# You should insert a getDevice-like function in order to get the
-# instance of a device of the robot. Something like:
-#  motor = robot.getDevice('motorname')
-#  ds = robot.getDevice('dsname')
-#  ds.enable(timestep)
-camera = robot.getDevice('camera')
-camera.enable(timestep)
-front_left_led = robot.getDevice('front left led')
-front_right_led = robot.getDevice('front right led')
-imu = robot.getDevice('inertial unit')
-imu.enable(timestep)
-gps = robot.getDevice('gps')
-gps.enable(timestep)
-compass = robot.getDevice('compass')
-compass.enable(timestep)
-gyro = robot.getDevice('gyro')
-gyro.enable(timestep)
-keyboard = Keyboard()
-keyboard.enable(timestep)
-camera_roll_motor = robot.getDevice('camera roll')
-camera_pitch_motor = robot.getDevice('camera pitch')
-# camera_yaw_motor = robot.getDevice('camera yaw')  // Not used in this example.
+    # You should insert a getDevice-like function in order to get the
+    # instance of a device of the robot. Something like:
+    #  motor = robot.getDevice('motorname')
+    #  ds = robot.getDevice('dsname')
+    #  ds.enable(timestep)
+    self.camera = self.robot.getDevice('camera')
+    self.camera.enable(self.timestep)
+    self.front_left_led = self.robot.getDevice('front left led')
+    self.front_right_led = self.robot.getDevice('front right led')
+    self.imu = self.robot.getDevice('inertial unit')
+    self.imu.enable(self.timestep)
+    self.gps = self.robot.getDevice('gps')
+    self.gps.enable(self.timestep)
+    self.compass = self.robot.getDevice('compass')
+    self.compass.enable(self.timestep)
+    self.gyro = self.robot.getDevice('gyro')
+    self.gyro.enable(self.timestep)
+    self.keyboard = Keyboard()
+    self.keyboard.enable(self.timestep)
+    self.camera_roll_motor = self.robot.getDevice('camera roll')
+    self.camera_pitch_motor = self.robot.getDevice('camera pitch')
+    # self.camera_yaw_motor = self.robot.getDevice('camera yaw')  // Not used in this example.
 
-# Get propeller motors and set them to velocity mode.
-front_left_motor = robot.getDevice('front left propeller')
-front_right_motor = robot.getDevice('front right propeller')
-rear_left_motor = robot.getDevice('rear left propeller')
-rear_right_motor = robot.getDevice('rear right propeller')
-motors = [front_left_motor, front_right_motor, rear_left_motor, rear_right_motor]
-for m in range(4):
-    motors[m].setPosition(np.Inf)
-    motors[m].setVelocity(1.0)
+    # Get propeller motors and set them to velocity mode.
+    self.front_left_motor = self.robot.getDevice('front left propeller')
+    self.front_right_motor = self.robot.getDevice('front right propeller')
+    self.rear_left_motor = self.robot.getDevice('rear left propeller')
+    self.rear_right_motor = self.robot.getDevice('rear right propeller')
+    self.motors = [self.front_left_motor, self.front_right_motor, self.rear_left_motor, self.rear_right_motor]
+    for m in range(4):
+        self.motors[m].setPosition(np.Inf)
+        self.motors[m].setVelocity(1.0)
 
-print('Start the drone...')
+    print('Start the drone...')
 
-# Wait one second.
-while robot.step(timestep) != -1:
-    if robot.getTime() > 1.0:
-        break
+    # Variables.
+    self.target_altitude = 1.0;  # The target altitude. Can be changed by the user.
+    self.started_simulation = False
+    self.movement = 'nop'
 
-# Variables.
-target_altitude = 1.0;  # The target altitude. Can be changed by the user.
-started_simulation = False
-movement = 'nop'
+    self.front_left_motor_input = 0.0
+    self.front_right_motor_input = 0.0
+    self.rear_left_motor_input = 0.0
+    self.rear_right_motor_input = 0.0
+  
+  def reset(self):
+    # Wait one second.
+    while self.robot.step(self.timestep) != -1:
+        if self.robot.getTime() > 1.0:
+            break
 
-front_left_motor_input = 0.0
-front_right_motor_input = 0.0
-rear_left_motor_input = 0.0
-rear_right_motor_input = 0.0
+    self.target_altitude = 1.0
+    self.started_simulation = False
+    self.movement = 'nop'
 
-# Main loop:
-# - perform simulation steps until Webots is stopping the controller
-while robot.step(timestep) != -1:
-    time = robot.getTime()
+    self.front_left_motor_input = 0.0
+    self.front_right_motor_input = 0.0
+    self.rear_left_motor_input = 0.0
+    self.rear_right_motor_input = 0.0
+
+  def step(self):
+    # Main loop:
+    # - perform simulation steps until Webots is stopping the controller
+    self.robot.step(self.timestep)
+    time = self.robot.getTime()
 
     # Read the sensors:
     # Enter here functions to read sensor data, like:
     #  val = ds.getValue()
-    roll = imu.getRollPitchYaw()[0]
-    pitch = imu.getRollPitchYaw()[1]
-    altitude = gps.getValues()[2]
-    roll_acceleration = gyro.getValues()[0]
-    pitch_acceleration = gyro.getValues()[1]
+    roll = self.imu.getRollPitchYaw()[0]
+    pitch = self.imu.getRollPitchYaw()[1]
+    altitude = self.gps.getValues()[2]
+    roll_acceleration = self.gyro.getValues()[0]
+    pitch_acceleration = self.gyro.getValues()[1]
 
-    if (not started_simulation) and (altitude >= target_altitude):
-      started_simulation = True
+    if (not self.started_simulation) and (altitude >= self.target_altitude):
+      self.started_simulation = True
     
     if altitude < 0.05:
-      break
+      env_json = json.dumps({
+          "state": {"ended": True}
+        })
+      self.producer.send('agents-mailbox', key=b'image', value=b'')
+      self.producer.send('agents-mailbox', key=b'data', value=env_json.encode('utf-8'))
+      self.producer.flush()
+      return
 
-    if started_simulation:
+    if self.started_simulation:
       # Calculate reward
       # Every timestep that the ant is alive, it gets a reward of 1
       survive_reward = 1
@@ -121,20 +140,20 @@ while robot.step(timestep) != -1:
       # A negative reward for penalising the drone if not in the particular altitude which is measured as difference between best altitude and current altitude.
       altitude_cost = np.abs(DESIRED_ALTITUED - altitude)
       # A negative reward for penalising the drone if it takes actions that are too large.
-      ctrl_cost = COEFFICIENT *((front_left_motor_input  +
-                                front_right_motor_input +
-                                rear_left_motor_input   +
-                                rear_right_motor_input +
+      ctrl_cost = COEFFICIENT *((self.front_left_motor_input  +
+                                self.front_right_motor_input +
+                                self.rear_left_motor_input   +
+                                self.rear_right_motor_input +
                                 roll_acceleration
                                 )*0.01
-                               )
+                              )
       #TODO A negative reward for penalising the drone if the external contact force occurs.
       contact_cost = 0
 
       total_reward = survive_reward + forward_reward - (altitude_cost + ctrl_cost + contact_cost)
 
       # Send data to the model
-      img = camera.getImage()
+      img = self.camera.getImage()
       env_json = json.dumps({
           "state": {
             "roll": roll,
@@ -142,86 +161,83 @@ while robot.step(timestep) != -1:
             "altitude": altitude,
             "roll_acceleration": roll_acceleration,
             "pitch_acceleration": pitch_acceleration,
-            "camera_height": camera.getHeight(),
-            "camera_width": camera.getWidth(),
+            "camera_height": self.camera.getHeight(),
+            "camera_width": self.camera.getWidth(),
             "ended": False
           },
           "reward": total_reward
         })
 
-      producer.send('agents-mailbox', key=b'image', value=img)
-      producer.send('agents-mailbox', key=b'data', value=env_json.encode('utf-8'))
-      producer.flush()
+      self.producer.send('agents-mailbox', key=b'image', value=img)
+      self.producer.send('agents-mailbox', key=b'data', value=env_json.encode('utf-8'))
+      self.producer.flush()
 
       # Get movement from the model
-      msg_move = consumer.__next__()
-      movement = msg_move.value.decode('utf-8')
-      # print(movement)
+      msg_move = self.consumer.__next__()
+      self.movement = msg_move.value.decode('utf-8')
+      # print(self.movement)
 
     # Blink the front LEDs alternatively with a 1 second rate.
     led_state = (int(time)) % 2
-    front_left_led.set(led_state)
-    front_right_led.set(not led_state)
+    self.front_left_led.set(led_state)
+    self.front_right_led.set(not led_state)
 
     # Stabilize the Camera by actuating the camera motors according to the gyro feedback.
-    camera_roll_motor.setPosition(-0.115 * roll_acceleration)
-    camera_pitch_motor.setPosition(-0.1 * pitch_acceleration)
+    self.camera_roll_motor.setPosition(-0.115 * roll_acceleration)
+    self.camera_pitch_motor.setPosition(-0.1 * pitch_acceleration)
 
     # Transform the keyboard input to disturbances on the stabilization algorithm.
     roll_disturbance = 0.0
     pitch_disturbance = 0.0
     yaw_disturbance = 0.0
-    if movement != 'nop':
-        if movement == 'up':
+    if self.movement != 'nop':
+        if self.movement == 'up':
             pitch_disturbance = -2.0
-        elif movement == 'down':
+        elif self.movement == 'down':
           pitch_disturbance = 2.0
-        elif movement == 'right':
+        elif self.movement == 'right':
           yaw_disturbance = -1.3
-        elif movement == 'left':
+        elif self.movement == 'left':
           yaw_disturbance = 1.3
-        elif movement == 'shift + right':
+        elif self.movement == 'shift + right':
           roll_disturbance = -1.0
-        elif movement == 'shift + left':
+        elif self.movement == 'shift + left':
           roll_disturbance = 1.0
-        elif movement == 'shift + up':
-          target_altitude += 0.05
-          # print(f'target altitude: {target_altitude} [m]')
-        elif movement == 'shift + down':
-          target_altitude -= 0.05
-          # print(f'target altitude: {target_altitude} [m]')
+        elif self.movement == 'shift + up':
+          self.target_altitude += 0.05
+          # print(f'target altitude: {self.target_altitude} [m]')
+        elif self.movement == 'shift + down':
+          self.target_altitude -= 0.05
+          # print(f'target altitude: {self.target_altitude} [m]')
 
     # Process sensor data here.
     # Compute the roll, pitch, yaw and vertical inputs.
     roll_input = K_ROLL_P * CLAMP(roll, -1.0, 1.0) + roll_acceleration + roll_disturbance
     pitch_input = K_PITCH_P * CLAMP(pitch, -1.0, 1.0) + pitch_acceleration + pitch_disturbance
     yaw_input = yaw_disturbance
-    clamped_difference_altitude = CLAMP(target_altitude - altitude + K_VERTICAL_OFFSET, -1.0, 1.0)
+    clamped_difference_altitude = CLAMP(self.target_altitude - altitude + K_VERTICAL_OFFSET, -1.0, 1.0)
     vertical_input = K_VERTICAL_P * pow(clamped_difference_altitude, 3.0)
 
     # Enter here functions to send actuator commands, like:
     #  motor.setPosition(10.0)
     # Actuate the motors taking into consideration all the computed inputs.
-    front_left_motor_input = K_VERTICAL_THRUST + vertical_input - roll_input + pitch_input - yaw_input
-    front_right_motor_input = K_VERTICAL_THRUST + vertical_input + roll_input + pitch_input + yaw_input
-    rear_left_motor_input = K_VERTICAL_THRUST + vertical_input - roll_input - pitch_input + yaw_input
-    rear_right_motor_input = K_VERTICAL_THRUST + vertical_input + roll_input - pitch_input - yaw_input
-    front_left_motor.setVelocity(front_left_motor_input)
-    front_right_motor.setVelocity(-front_right_motor_input)
-    rear_left_motor.setVelocity(-rear_left_motor_input)
-    rear_right_motor.setVelocity(rear_right_motor_input)
-    pass
+    self.front_left_motor_input = K_VERTICAL_THRUST + vertical_input - roll_input + pitch_input - yaw_input
+    self.front_right_motor_input = K_VERTICAL_THRUST + vertical_input + roll_input + pitch_input + yaw_input
+    self.rear_left_motor_input = K_VERTICAL_THRUST + vertical_input - roll_input - pitch_input + yaw_input
+    self.rear_right_motor_input = K_VERTICAL_THRUST + vertical_input + roll_input - pitch_input - yaw_input
+    self.front_left_motor.setVelocity(self.front_left_motor_input)
+    self.front_right_motor.setVelocity(-self.front_right_motor_input)
+    self.rear_left_motor.setVelocity(-self.rear_left_motor_input)
+    self.rear_right_motor.setVelocity(self.rear_right_motor_input)
+    return
 
+  def close(self):
+    # Enter here exit cleanup code.
+    self.robot.__del__()
 
-env_json = json.dumps({
-    "state": {"ended": True}
-  })
-producer.send('agents-mailbox', key=b'image', value=b'')
-producer.send('agents-mailbox', key=b'data', value=env_json.encode('utf-8'))
-producer.flush()
+    self.producer.close()
+    self.consumer.close()
 
-# Enter here exit cleanup code.
-robot.__del__()
-
-producer.close()
-consumer.close()
+env = Environment()
+while True:
+  env.step()
