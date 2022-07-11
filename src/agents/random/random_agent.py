@@ -22,7 +22,7 @@ while(True):
     msg_json = consumer.__next__()
     if msg_img.key.decode() != 'image':
         msg_img = msg_json
-    env_json = json.loads(msg_json.value.decode('utf-8-sig'))
+    env_json = json.loads(msg_json.value.decode('utf-8'))
 
     if env_json['state']['ended']:
         break
