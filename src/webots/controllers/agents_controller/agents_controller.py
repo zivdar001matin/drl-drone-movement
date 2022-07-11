@@ -126,6 +126,7 @@ while robot.step(timestep) != -1:
       # Get movement from the model
       msg_move = consumer.__next__()
       movement = msg_move.value.decode('utf-8')
+      # print(movement)
 
     # Blink the front LEDs alternatively with a 1 second rate.
     led_state = (int(time)) % 2

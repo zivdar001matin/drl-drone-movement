@@ -38,7 +38,6 @@ while(True):
 
     movements = ['nop', 'up', 'down', 'right', 'left', 'shift + up', 'shift + down', 'shift + right', 'shift + left']
     movement = random.choice(movements)
-    print(movement)
 
     producer.send('webots-mailbox', key=b'movement', value=movement.encode('utf-8'))
     producer.flush()
