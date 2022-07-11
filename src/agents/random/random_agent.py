@@ -22,13 +22,13 @@ while(True):
     msg_json = consumer.__next__()
     if msg_img.key.decode() != 'image':
         msg_img = msg_json
-    state_json = json.loads(msg_json.value.decode('utf-8-sig'))
+    env_json = json.loads(msg_json.value.decode('utf-8-sig'))
 
-    if state_json['ended']:
+    if env_json['state']['ended']:
         break
 
     # convert image bytes data to numpy array of dtype uint8
-    nparr = np.frombuffer(msg_img.value, np.uint8).reshape((state_json['camera_height'], state_json['camera_width'], 4), order='A')
+    nparr = np.frombuffer(msg_img.value, np.uint8).reshape((env_json['state']['camera_height'], env_json['state']['camera_width'], 4), order='A')
     # convert BGRa -> RGB
     nparr = nparr[:, :, :3][:, :, ::-1]
     # img = Image.fromarray(nparr, 'RGB')

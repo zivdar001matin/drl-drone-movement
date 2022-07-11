@@ -135,19 +135,22 @@ while robot.step(timestep) != -1:
 
       # Send data to the model
       img = camera.getImage()
-      state = json.dumps({
-          "roll": roll,
-          "pitch": pitch,
-          "altitude": altitude,
-          "roll_acceleration": roll_acceleration,
-          "pitch_acceleration": pitch_acceleration,
-          "camera_height": camera.getHeight(),
-          "camera_width": camera.getWidth(),
-          "ended": False
+      env_json = json.dumps({
+          "state": {
+            "roll": roll,
+            "pitch": pitch,
+            "altitude": altitude,
+            "roll_acceleration": roll_acceleration,
+            "pitch_acceleration": pitch_acceleration,
+            "camera_height": camera.getHeight(),
+            "camera_width": camera.getWidth(),
+            "ended": False
+          },
+          "reward": total_reward
         })
 
       producer.send('agents-mailbox', key=b'image', value=img)
-      producer.send('agents-mailbox', key=b'data', value=state.encode('utf-8'))
+      producer.send('agents-mailbox', key=b'data', value=env_json.encode('utf-8'))
       producer.flush()
 
       # Get movement from the model
@@ -210,11 +213,11 @@ while robot.step(timestep) != -1:
     pass
 
 
-state = json.dumps({
-    "ended": True
+env_json = json.dumps({
+    "state": {"ended": True}
   })
 producer.send('agents-mailbox', key=b'image', value=b'')
-producer.send('agents-mailbox', key=b'data', value=state.encode('utf-8'))
+producer.send('agents-mailbox', key=b'data', value=env_json.encode('utf-8'))
 producer.flush()
 
 # Enter here exit cleanup code.
