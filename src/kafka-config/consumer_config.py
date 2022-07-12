@@ -11,3 +11,10 @@ webots_config = {
     # 'enable_auto_commit': False,
     # 'auto_offset_reset': 'latest'
 }
+
+trainer_config = {
+    'bootstrap_servers': 'localhost:9094',
+    'group_id': 'drl-drone-movement',
+    # 'enable_auto_commit': False,
+    # 'auto_offset_reset': 'latest'
+}

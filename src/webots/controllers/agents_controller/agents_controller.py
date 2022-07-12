@@ -83,6 +83,7 @@ class Environment():
     self.target_altitude = 1.0;  # The target altitude. Can be changed by the user.
     self.started_simulation = False
     self.movement = 'nop'
+    self.done = False
 
     self.front_left_motor_input = 0.0
     self.front_right_motor_input = 0.0
@@ -98,6 +99,7 @@ class Environment():
     self.target_altitude = 1.0
     self.started_simulation = False
     self.movement = 'nop'
+    self.done = False
 
     self.front_left_motor_input = 0.0
     self.front_right_motor_input = 0.0
@@ -123,13 +125,7 @@ class Environment():
       self.started_simulation = True
     
     if altitude < 0.05:
-      env_json = json.dumps({
-          "state": {"ended": True}
-        })
-      self.producer.send('agents-mailbox', key=b'image', value=b'')
-      self.producer.send('agents-mailbox', key=b'data', value=env_json.encode('utf-8'))
-      self.producer.flush()
-      return
+      self.done = True
 
     if self.started_simulation:
       # Calculate reward
@@ -160,16 +156,18 @@ class Environment():
             "pitch": pitch,
             "altitude": altitude,
             "roll_acceleration": roll_acceleration,
-            "pitch_acceleration": pitch_acceleration,
-            "camera_height": self.camera.getHeight(),
-            "camera_width": self.camera.getWidth(),
-            "ended": False
+            "pitch_acceleration": pitch_acceleration
           },
-          "reward": total_reward
+          "reward": total_reward,
+          "done": self.done,
+          "info": {
+            "camera_height": self.camera.getHeight(),
+            "camera_width": self.camera.getWidth()
+          }
         })
 
-      self.producer.send('agents-mailbox', key=b'image', value=img)
-      self.producer.send('agents-mailbox', key=b'data', value=env_json.encode('utf-8'))
+      self.producer.send('trainer-mailbox', key=b'image', value=img)
+      self.producer.send('trainer-mailbox', key=b'data', value=env_json.encode('utf-8'))
       self.producer.flush()
 
       # Get movement from the model
