@@ -25,7 +25,7 @@ from producer_config import webots_config as producer_config
 
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
-from controller import Robot
+from controller import Supervisor
 
 from controller import Keyboard
 
@@ -35,7 +35,7 @@ CLAMP = lambda value, low, high :  ((low) if (value) < (low) else ((high) if (va
 class Environment():
   def __init__(self):
     # create the Robot instance.
-    self.robot = Robot()
+    self.robot = Supervisor()
 
     # kafka API
     self.producer = KafkaProducer(**producer_config)
@@ -90,13 +90,26 @@ class Environment():
     self.rear_left_motor_input = 0.0
     self.rear_right_motor_input = 0.0
   
+  def run(self):
+    while True:
+      msg_command = self.consumer.__next__()
+      command = msg_command.value.decode()
+      self.robot.step(self.timestep)
+      print(f'2-get-{command}')
+      # continue
+      if msg_command.key.decode() != 'command':
+        continue
+        # raise RuntimeError()
+      if command == 'reset':
+        self.reset()  
+      if not self.done:
+        self.step()
+  
   def reset(self):
-    # Wait one second.
-    while self.robot.step(self.timestep) != -1:
-        if self.robot.getTime() > 1.0:
-            break
+    self.robot.simulationReset()
 
-    self.target_altitude = 1.0
+    # Variables.
+    self.target_altitude = 1.0;  # The target altitude. Can be changed by the user.
     self.started_simulation = False
     self.movement = 'nop'
     self.done = False
@@ -105,6 +118,60 @@ class Environment():
     self.front_right_motor_input = 0.0
     self.rear_left_motor_input = 0.0
     self.rear_right_motor_input = 0.0
+
+    # Wait one second.
+    curr_time = self.robot.getTime()
+    while self.robot.step(self.timestep) != -1:
+      if self.robot.getTime() - curr_time > 1.0:
+          break
+    for m in range(4):
+      self.motors[m].setPosition(np.Inf)
+      self.motors[m].setVelocity(1.0)
+    # self.step()
+    while not self.started_simulation:
+      # Start loop:
+      # - perform simulation steps until Webots is stopping the controller
+      self.robot.step(self.timestep)
+      time = self.robot.getTime()
+
+      # Read the sensors:
+      # Enter here functions to read sensor data, like:
+      #  val = ds.getValue()
+      roll = self.imu.getRollPitchYaw()[0]
+      pitch = self.imu.getRollPitchYaw()[1]
+      altitude = self.gps.getValues()[2]
+      roll_acceleration = self.gyro.getValues()[0]
+      pitch_acceleration = self.gyro.getValues()[1]
+      if altitude >= self.target_altitude:
+        self.started_simulation = True
+
+      # Stabilize the Camera by actuating the camera motors according to the gyro feedback.
+      self.camera_roll_motor.setPosition(-0.115 * roll_acceleration)
+      self.camera_pitch_motor.setPosition(-0.1 * pitch_acceleration)
+
+      roll_disturbance = 0.0
+      pitch_disturbance = 0.0
+      yaw_disturbance = 0.0
+
+      # Process sensor data here.
+      # Compute the roll, pitch, yaw and vertical inputs.
+      roll_input = K_ROLL_P * CLAMP(roll, -1.0, 1.0) + roll_acceleration + roll_disturbance
+      pitch_input = K_PITCH_P * CLAMP(pitch, -1.0, 1.0) + pitch_acceleration + pitch_disturbance
+      yaw_input = yaw_disturbance
+      clamped_difference_altitude = CLAMP(self.target_altitude - altitude + K_VERTICAL_OFFSET, -1.0, 1.0)
+      vertical_input = K_VERTICAL_P * pow(clamped_difference_altitude, 3.0)
+
+      # Enter here functions to send actuator commands, like:
+      #  motor.setPosition(10.0)
+      # Actuate the motors taking into consideration all the computed inputs.
+      self.front_left_motor_input = K_VERTICAL_THRUST + vertical_input - roll_input + pitch_input - yaw_input
+      self.front_right_motor_input = K_VERTICAL_THRUST + vertical_input + roll_input + pitch_input + yaw_input
+      self.rear_left_motor_input = K_VERTICAL_THRUST + vertical_input - roll_input - pitch_input + yaw_input
+      self.rear_right_motor_input = K_VERTICAL_THRUST + vertical_input + roll_input - pitch_input - yaw_input
+      self.front_left_motor.setVelocity(self.front_left_motor_input)
+      self.front_right_motor.setVelocity(-self.front_right_motor_input)
+      self.rear_left_motor.setVelocity(-self.rear_left_motor_input)
+      self.rear_right_motor.setVelocity(self.rear_right_motor_input)
 
   def step(self):
     # Main loop:
@@ -120,60 +187,60 @@ class Environment():
     altitude = self.gps.getValues()[2]
     roll_acceleration = self.gyro.getValues()[0]
     pitch_acceleration = self.gyro.getValues()[1]
-
-    if (not self.started_simulation) and (altitude >= self.target_altitude):
-      self.started_simulation = True
     
-    if altitude < 0.05:
+    if altitude < 0.1:
+      print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
       self.done = True
 
-    if self.started_simulation:
-      # Calculate reward
-      # Every timestep that the ant is alive, it gets a reward of 1
-      survive_reward = 1
-      # A reward of moving forward which is measured as drone x-coordinate velocity
-      forward_reward = pitch * 10
-      # A negative reward for penalising the drone if not in the particular altitude which is measured as difference between best altitude and current altitude.
-      altitude_cost = np.abs(DESIRED_ALTITUED - altitude)
-      # A negative reward for penalising the drone if it takes actions that are too large.
-      ctrl_cost = COEFFICIENT *((self.front_left_motor_input  +
-                                self.front_right_motor_input +
-                                self.rear_left_motor_input   +
-                                self.rear_right_motor_input +
-                                roll_acceleration
-                                )*0.01
-                              )
-      #TODO A negative reward for penalising the drone if the external contact force occurs.
-      contact_cost = 0
+    # Calculate reward
+    # Every timestep that the ant is alive, it gets a reward of 1
+    survive_reward = 1
+    # A reward of moving forward which is measured as drone x-coordinate velocity
+    forward_reward = pitch * 10
+    # A negative reward for penalising the drone if not in the particular altitude which is measured as difference between best altitude and current altitude.
+    altitude_cost = np.abs(DESIRED_ALTITUED - altitude)
+    # A negative reward for penalising the drone if it takes actions that are too large.
+    ctrl_cost = COEFFICIENT *((self.front_left_motor_input  +
+                              self.front_right_motor_input +
+                              self.rear_left_motor_input   +
+                              self.rear_right_motor_input +
+                              roll_acceleration
+                              )*0.01
+                            )
+    #TODO A negative reward for penalising the drone if the external contact force occurs.
+    contact_cost = 0
 
-      total_reward = survive_reward + forward_reward - (altitude_cost + ctrl_cost + contact_cost)
+    total_reward = survive_reward + forward_reward - (altitude_cost + ctrl_cost + contact_cost)
 
-      # Send data to the model
-      img = self.camera.getImage()
-      env_json = json.dumps({
-          "state": {
-            "roll": roll,
-            "pitch": pitch,
-            "altitude": altitude,
-            "roll_acceleration": roll_acceleration,
-            "pitch_acceleration": pitch_acceleration
-          },
-          "reward": total_reward,
-          "done": self.done,
-          "info": {
-            "camera_height": self.camera.getHeight(),
-            "camera_width": self.camera.getWidth()
-          }
-        })
+    # Send data to the model
+    img = self.camera.getImage()
+    env_json = json.dumps({
+        "state": {
+          "roll": roll,
+          "pitch": pitch,
+          "altitude": altitude,
+          "roll_acceleration": roll_acceleration,
+          "pitch_acceleration": pitch_acceleration
+        },
+        "reward": total_reward,
+        "complete": self.done,
+        "info": {
+          "camera_height": self.camera.getHeight(),
+          "camera_width": self.camera.getWidth()
+        }
+      })
 
-      self.producer.send('trainer-mailbox', key=b'image', value=img)
-      self.producer.send('trainer-mailbox', key=b'data', value=env_json.encode('utf-8'))
-      self.producer.flush()
+    self.producer.send('trainer-mailbox', key=b'image', value=img)
+    print('3-send-image')
+    self.producer.send('trainer-mailbox', key=b'data', value=env_json.encode('utf-8'))
+    print('3-send-data')
+    self.producer.flush()
 
-      # Get movement from the model
-      msg_move = self.consumer.__next__()
-      self.movement = msg_move.value.decode('utf-8')
-      # print(self.movement)
+    # Get movement from the model
+    print('6-get-movement')
+    msg_move = self.consumer.__next__()
+    self.movement = msg_move.value.decode('utf-8')
+    print(self.movement)
 
     # Blink the front LEDs alternatively with a 1 second rate.
     led_state = (int(time)) % 2
@@ -237,5 +304,4 @@ class Environment():
     self.consumer.close()
 
 env = Environment()
-while True:
-  env.step()
+env.run()
