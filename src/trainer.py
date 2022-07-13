@@ -41,7 +41,7 @@ class Trainer():
       done = env_json['complete']
       if done:
         print('&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&')
-        self.send_action_to_env('nop')
+        self.send_action_to_env('0')  #nop
       # store gameplay experience
       self.buffer.store_gameplay_experience(state, next_state, reward, action, done)
       state = next_state

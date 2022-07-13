@@ -34,7 +34,7 @@ class RandomAgent():
 
         self.producer.send('trainer-mailbox', key=b'movement', value=str(movement).encode('utf-8'))
         self.producer.flush()
-        print(f'5-send-{movement}')
+        print(f'5-send-{ACTIONS[movement]}:{movement}')
     
     def __del__(self):
         self.producer.close()
