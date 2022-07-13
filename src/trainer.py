@@ -6,6 +6,7 @@ import json
 import cv2
 
 from kafka import KafkaConsumer, KafkaProducer
+from config import EPISODES
 from consumer_config import trainer_config as consumer_config
 from producer_config import trainer_to_agents_config, trainer_to_webots_config
 
@@ -17,6 +18,15 @@ class Trainer():
     self.to_agents_producer = KafkaProducer(**trainer_to_agents_config)
     self.to_webots_producer = KafkaProducer(**trainer_to_webots_config)
     self.buffer = ReplayBuffer()
+
+  def run(self):
+    for episode_cnt in range(EPISODES): # Train the agent for 6000 episodes of the game
+      self.collect_gameplay_experience()
+      gameplay_experience_batch = self.buffer.sample_gameplay_batch()
+      self.train_agent(gameplay_experience_batch)
+      if episode_cnt % 20 == 0:
+        self.update_agent_target_network()
+    pass
 
   def collect_gameplay_experience(self):
     """
@@ -46,6 +56,12 @@ class Trainer():
       self.buffer.store_gameplay_experience(state, next_state, reward, action, done)
       state = next_state
     
+  def train_agent(self, gameplay_experience_batch):
+    pass
+
+  def update_agent_target_network(self):
+    pass
+
   def get_state_from_env(self, command):
     print(f'2-send-{command}-(webots)')
     self.to_webots_producer.send('webots-mailbox', key=b'command', value=command.encode('utf-8'))
@@ -79,7 +95,7 @@ class Trainer():
 
   def get_action_from_agent_policy(self, env_json):
     print('4-send-data-(agents)')
-    self.to_agents_producer.send('agents-mailbox', key=b'data', value=env_json.encode('utf-8'))
+    self.to_agents_producer.send('agents-mailbox', key=b'policy', value=env_json.encode('utf-8'))
     self.to_agents_producer.flush()
     # Get action from the model
     print('5-get-movement-(agents)')
@@ -96,4 +112,4 @@ class Trainer():
 
 trainer = Trainer()
 while True:
-  trainer.collect_gameplay_experience()
+  trainer.run()
