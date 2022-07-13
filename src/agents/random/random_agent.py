@@ -1,14 +1,14 @@
 import sys
+sys.path.append('../../')
 sys.path.append('../../kafka-config')
 
-import random
 import numpy as np
-import base64
 import json
 import cv2
 
 from PIL import Image
 from kafka import KafkaConsumer, KafkaProducer
+from config import ACTIONS
 from consumer_config import agents_config as consumer_config
 from producer_config import agents_config as producer_config
 
@@ -30,10 +30,9 @@ class RandomAgent():
         #     self.__del__()
         #     return
 
-        movements = ['nop', 'up', 'down', 'right', 'left', 'shift + up', 'shift + down', 'shift + right', 'shift + left']
-        movement = random.choice(movements)
+        movement = np.random.randint(len(ACTIONS), size=1)[0]
 
-        self.producer.send('trainer-mailbox', key=b'movement', value=movement.encode('utf-8'))
+        self.producer.send('trainer-mailbox', key=b'movement', value=str(movement).encode('utf-8'))
         self.producer.flush()
         print(f'5-send-{movement}')
     

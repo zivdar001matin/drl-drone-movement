@@ -18,6 +18,7 @@ import base64
 import json
 
 from kafka import KafkaConsumer, KafkaProducer
+from config import ACTIONS
 from config import DESIRED_ALTITUED, COEFFICIENT
 from constant import K_ROLL_P, K_PITCH_P, K_VERTICAL_P, K_VERTICAL_THRUST, K_VERTICAL_OFFSET
 from consumer_config import webots_config as consumer_config
@@ -239,7 +240,7 @@ class Environment():
     # Get movement from the model
     print('6-get-movement')
     msg_move = self.consumer.__next__()
-    self.movement = msg_move.value.decode('utf-8')
+    self.movement = ACTIONS[int(msg_move.value.decode('utf-8'))]
     print(self.movement)
 
     # Blink the front LEDs alternatively with a 1 second rate.

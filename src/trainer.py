@@ -33,7 +33,7 @@ class Trainer():
       print('~~~~~~~~~~~~~~~~~~~~~~~')
       # action = agent.policy(state)
       action = self.get_action_from_agent_policy(json.dumps(env_json))
-      self.send_action_to_env(action)   #TODO change action type from string to int
+      self.send_action_to_env(action)
       # next_state, reward, done = env.step(action)
       _, env_json = self.get_state_from_env('step')
       next_state = env_json['state']
