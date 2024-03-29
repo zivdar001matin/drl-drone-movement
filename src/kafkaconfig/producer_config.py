@@ -1,5 +1,9 @@
+from dotenv import dotenv_values, find_dotenv
+
+config = dotenv_values(find_dotenv())
+
 agents_config = {
-    'bootstrap_servers': ['localhost:9094'],
+    'bootstrap_servers': [f'{config.get("KAFKA_SERVER_IP")}:{config.get("KAFKA_TRAINER_PORT")}'],
     # 'acks': 'all',
     'retries': 100,
     # 'max_in_flight_requests_per_connection': 5,
@@ -9,7 +13,7 @@ agents_config = {
 }
 
 webots_config = {
-    'bootstrap_servers': ['localhost:9094'],
+    'bootstrap_servers': [f'{config.get("KAFKA_SERVER_IP")}:{config.get("KAFKA_TRAINER_PORT")}'],
     # 'acks': 'all',
     'retries': 100,
     # 'max_in_flight_requests_per_connection': 5,
@@ -19,7 +23,7 @@ webots_config = {
 }
 
 trainer_to_agents_config = {
-    'bootstrap_servers': ['localhost:9092'],
+    'bootstrap_servers': [f'{config.get("KAFKA_SERVER_IP")}:{config.get("KAFKA_AGENTS_PORT")}'],
     # 'acks': 'all',
     'retries': 100,
     # 'max_in_flight_requests_per_connection': 5,
@@ -29,7 +33,7 @@ trainer_to_agents_config = {
 }
 
 trainer_to_webots_config = {
-    'bootstrap_servers': ['localhost:9093'],
+    'bootstrap_servers': [f'{config.get("KAFKA_SERVER_IP")}:{config.get("KAFKA_WEBOTS_PORT")}'],
     # 'acks': 'all',
     'retries': 100,
     # 'max_in_flight_requests_per_connection': 5,
