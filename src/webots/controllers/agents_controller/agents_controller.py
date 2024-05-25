@@ -11,7 +11,7 @@
 import sys
 sys.path.append('../')
 sys.path.append('../../../')
-sys.path.append('../../../kafka-config/')
+sys.path.append('../../../kafkaconfig/')
 
 import numpy as np
 import base64
@@ -90,7 +90,7 @@ class Environment():
     self.front_right_motor_input = 0.0
     self.rear_left_motor_input = 0.0
     self.rear_right_motor_input = 0.0
-  
+
   def run(self):
     while True:
       msg_command = self.consumer.__next__()
@@ -102,10 +102,10 @@ class Environment():
         continue
         # raise RuntimeError()
       if command == 'reset':
-        self.reset()  
+        self.reset()
       if not self.done:
         self.step()
-  
+
   def reset(self):
     self.robot.simulationReset()
 
@@ -188,7 +188,7 @@ class Environment():
     altitude = self.gps.getValues()[2]
     roll_acceleration = self.gyro.getValues()[0]
     pitch_acceleration = self.gyro.getValues()[1]
-    
+
     if altitude < 0.1:
       print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
       self.done = True

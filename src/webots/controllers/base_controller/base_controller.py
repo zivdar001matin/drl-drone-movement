@@ -16,7 +16,7 @@ from constant import K_ROLL_P, K_PITCH_P, K_VERTICAL_P, K_VERTICAL_THRUST, K_VER
 
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
-from controller import Robot
+from controller import Supervisor
 
 from controller import Keyboard
 
@@ -24,8 +24,7 @@ SIGN = lambda x : ((x) > 0) - ((x) < 0)
 CLAMP = lambda value, low, high :  ((low) if (value) < (low) else ((high) if (value) > (high) else (value)))
 
 # create the Robot instance.
-robot = Robot()
-
+robot = Supervisor()
 # get the time step of the current world.
 timestep = int(robot.getBasicTimeStep())
 
@@ -83,6 +82,16 @@ print("- 'shift + left': strafe left.")
 # Variables.
 target_altitude = 1.0;  # The target altitude. Can be changed by the user.
 
+def reeset():
+  robot.simulationReset()
+  # Wait one second.
+  while robot.step(timestep) != -1:
+      if robot.getTime() > 1.0:
+          break
+  for m in range(4):
+    motors[m].setPosition(np.Inf)
+    motors[m].setVelocity(1.0)
+
 # Main loop:
 # - perform simulation steps until Webots is stopping the controller
 while robot.step(timestep) != -1:
@@ -117,6 +126,7 @@ while robot.step(timestep) != -1:
         elif key == Keyboard.DOWN:
           pitch_disturbance = 2.0
         elif key == Keyboard.RIGHT:
+          reeset()
           yaw_disturbance = -1.3
         elif key == Keyboard.LEFT:
           yaw_disturbance = 1.3
