@@ -69,6 +69,11 @@ The project has 3 main components:
 - __agents__ folder contains all the agents (random and dqn agents) which is as same as the _agent_ in the RL concept.
 - __trainer.py__ is being used as a bridge between _evironment_ and _agent_, you may wonder why do we need it? Good question! In order to update our reinforcement learner.
 
+<p>
+  <img src="images/concept.png" alt="Concept">
+  <em>Data pipeline is implemented using Kafka</em>
+</p>
+
 Each state is made up of these elements:
 - position:
   - roll
