@@ -84,6 +84,34 @@ Each state is made up of these elements:
   - pitch_acceleration
 - camera input (TODO)
 
+Here is the main `trainer.py` code flow:
+```python
+def collect_gameplay_experience(self):
+    """
+    The collect_gameplay_experience function does the simulation "env" with the
+    instructions produced by "agent" and stores the simulation experiences
+    into "buffer" for later training.
+    """
+    env_json = self.get_state_from_env('reset')
+    state = env_json['state']
+
+    done = False
+    while not done:
+      # action = agent.policy(state)
+      action = self.get_action_from_agent_policy(json.dumps(env_json))
+      self.send_action_to_env(action)
+      # next_state, reward, done = env.step(action)
+      env_json = self.get_state_from_env('step')
+      next_state = env_json['state']
+      reward = env_json['reward']
+      done = env_json['complete']
+      if done:
+        self.send_action_to_env('0')  #nop
+      # store gameplay experience
+      self.buffer.store_gameplay_experience(state, next_state, reward, action, done)
+      state = next_state
+```
+
 ### Prerequisites
 
 First you have to install [Webots](https://cyberbotics.com/) which is an open source robot simulator we used for our simulation environment.
