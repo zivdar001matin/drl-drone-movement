@@ -161,10 +161,12 @@ Because of the hassle with the Zookeeper and some other stuff, kafka was being r
     ```sh
    webots --mode=fast --no-rendering base_world.wbt
     ```
-7. Run the trianer to collect simulation experiences and do the RL training stuff. 
+4. Run the trianer to collect simulation experiences and do the RL training stuff. 
     ```sh
    python src/trainer.py
     ```
+
+5. If in any case the simulation stopped, you may use `flusher.py` to flush the prev data in the kafka buffer.
    
 Below you can see a demo of a single train episode for the _dqn_agent_.
 
